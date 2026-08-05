@@ -11,6 +11,8 @@ import {
   INITIAL_TEACHER_CHAT, INITIAL_QUESTIONS, INITIAL_CALENDAR_EVENTS, 
   INITIAL_ACTIVITY_LOGS 
 } from '../lib/sampleData';
+import { db } from '../firebase';
+import { collection, doc, setDoc, updateDoc, deleteDoc, onSnapshot } from 'firebase/firestore';
 
 interface AuthContextType {
   currentUser: UserProfile | null;
@@ -86,21 +88,17 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  // Local storage persistence initialization
+  // Session persistence: null by default unless logged in on this browser session
   const [currentUser, setCurrentUser] = useState<UserProfile | null>(() => {
-    const saved = localStorage.getItem('eduflow_user');
+    const saved = localStorage.getItem('eduflow_session_user');
     if (saved) {
-      const u = JSON.parse(saved);
-      if (u.role === 'admin') {
-        return {
-          ...u,
-          loginId: 'dohyunpark',
-          name: '박도현'
-        };
+      try {
+        return JSON.parse(saved);
+      } catch (e) {
+        return null;
       }
-      return u;
     }
-    return INITIAL_USERS[0];
+    return null;
   });
 
   const [isDarkMode, setIsDarkMode] = useState<boolean>(() => {
@@ -110,56 +108,32 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const [students, setStudents] = useState<Student[]>(() => {
     const saved = localStorage.getItem('eduflow_students');
-    if (saved) {
-      const parsed: Student[] = JSON.parse(saved);
-      return parsed.filter(s => !['s1', 's2', 's3', 's4'].includes(s.id));
-    }
-    return INITIAL_STUDENTS;
+    return saved ? JSON.parse(saved) : INITIAL_STUDENTS;
   });
 
   const [teachers, setTeachers] = useState<Teacher[]>(() => {
     const saved = localStorage.getItem('eduflow_teachers');
-    if (saved) {
-      const parsed: Teacher[] = JSON.parse(saved);
-      return parsed.filter(t => !['t1', 't2'].includes(t.id));
-    }
-    return INITIAL_TEACHERS;
+    return saved ? JSON.parse(saved) : INITIAL_TEACHERS;
   });
 
   const [attendance, setAttendance] = useState<AttendanceRecord[]>(() => {
     const saved = localStorage.getItem('eduflow_attendance');
-    if (saved) {
-      const parsed: AttendanceRecord[] = JSON.parse(saved);
-      return parsed.filter(a => !['s1', 's2', 's3', 's4'].includes(a.studentId));
-    }
-    return INITIAL_ATTENDANCE;
+    return saved ? JSON.parse(saved) : INITIAL_ATTENDANCE;
   });
 
   const [progress, setProgress] = useState<ProgressItem[]>(() => {
     const saved = localStorage.getItem('eduflow_progress');
-    if (saved) {
-      const parsed: ProgressItem[] = JSON.parse(saved);
-      return parsed.filter(p => !['s1', 's2', 's3', 's4'].includes(p.studentId));
-    }
-    return INITIAL_PROGRESS;
+    return saved ? JSON.parse(saved) : INITIAL_PROGRESS;
   });
 
   const [homework, setHomework] = useState<Homework[]>(() => {
     const saved = localStorage.getItem('eduflow_homework');
-    if (saved) {
-      const parsed: Homework[] = JSON.parse(saved);
-      return parsed.filter(h => !['hw-1', 'hw-2'].includes(h.id));
-    }
-    return INITIAL_HOMEWORK;
+    return saved ? JSON.parse(saved) : INITIAL_HOMEWORK;
   });
 
   const [timetable, setTimetable] = useState<TimetableSlot[]>(() => {
     const saved = localStorage.getItem('eduflow_timetable');
-    if (saved) {
-      const parsed: TimetableSlot[] = JSON.parse(saved);
-      return parsed.filter(t => !['tt-1', 'tt-2', 'tt-3', 'tt-4'].includes(t.id));
-    }
-    return INITIAL_TIMETABLE;
+    return saved ? JSON.parse(saved) : INITIAL_TIMETABLE;
   });
 
   const [announcements, setAnnouncements] = useState<Announcement[]>(() => {
@@ -169,29 +143,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const [teacherChat, setTeacherChat] = useState<TeacherChatMessage[]>(() => {
     const saved = localStorage.getItem('eduflow_teacher_chat');
-    if (saved) {
-      const parsed: TeacherChatMessage[] = JSON.parse(saved);
-      return parsed.filter(tc => !['tc-1', 'tc-2', 'tc-3'].includes(tc.id));
-    }
-    return INITIAL_TEACHER_CHAT;
+    return saved ? JSON.parse(saved) : INITIAL_TEACHER_CHAT;
   });
 
   const [questions, setQuestions] = useState<Question[]>(() => {
     const saved = localStorage.getItem('eduflow_questions');
-    if (saved) {
-      const parsed: Question[] = JSON.parse(saved);
-      return parsed.filter(q => !['q-1', 'q-2'].includes(q.id));
-    }
-    return INITIAL_QUESTIONS;
+    return saved ? JSON.parse(saved) : INITIAL_QUESTIONS;
   });
 
   const [calendarEvents, setCalendarEvents] = useState<CalendarEvent[]>(() => {
     const saved = localStorage.getItem('eduflow_events');
-    if (saved) {
-      const parsed: CalendarEvent[] = JSON.parse(saved);
-      return parsed.filter(e => !['ev-1', 'ev-2', 'ev-3', 'ev-4'].includes(e.id));
-    }
-    return INITIAL_CALENDAR_EVENTS;
+    return saved ? JSON.parse(saved) : INITIAL_CALENDAR_EVENTS;
   });
 
   const [activityLogs, setActivityLogs] = useState<ActivityLog[]>(() => {
@@ -202,16 +164,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [academySettings, setAcademySettings] = useState<AcademySettings>(() => {
     const saved = localStorage.getItem('eduflow_settings');
     if (saved) {
-      const parsed: AcademySettings = JSON.parse(saved);
-      return {
-        ...parsed,
-        directorName: '박도현'
-      };
+      try {
+        const parsed: AcademySettings = JSON.parse(saved);
+        if (!parsed.name || parsed.name.includes('에듀플로우')) {
+          return { ...parsed, name: 'RalRalRal Class' };
+        }
+        return parsed;
+      } catch (e) {
+        return INITIAL_ACADEMY_SETTINGS;
+      }
     }
     return INITIAL_ACADEMY_SETTINGS;
   });
 
-  // Sync state to local storage
+  // Dark mode effect
   useEffect(() => {
     localStorage.setItem('eduflow_darkmode', JSON.stringify(isDarkMode));
     if (isDarkMode) {
@@ -221,14 +187,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   }, [isDarkMode]);
 
+  // Session user storage
   useEffect(() => {
     if (currentUser) {
-      localStorage.setItem('eduflow_user', JSON.stringify(currentUser));
+      localStorage.setItem('eduflow_session_user', JSON.stringify(currentUser));
     } else {
-      localStorage.removeItem('eduflow_user');
+      localStorage.removeItem('eduflow_session_user');
     }
   }, [currentUser]);
 
+  // Local Storage backups
   useEffect(() => { localStorage.setItem('eduflow_students', JSON.stringify(students)); }, [students]);
   useEffect(() => { localStorage.setItem('eduflow_teachers', JSON.stringify(teachers)); }, [teachers]);
   useEffect(() => { localStorage.setItem('eduflow_attendance', JSON.stringify(attendance)); }, [attendance]);
@@ -241,6 +209,114 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   useEffect(() => { localStorage.setItem('eduflow_timetable', JSON.stringify(timetable)); }, [timetable]);
   useEffect(() => { localStorage.setItem('eduflow_logs', JSON.stringify(activityLogs)); }, [activityLogs]);
   useEffect(() => { localStorage.setItem('eduflow_settings', JSON.stringify(academySettings)); }, [academySettings]);
+
+  // Real-time Cloud Firestore synchronization across devices
+  useEffect(() => {
+    const unsubStudents = onSnapshot(collection(db, 'students'), (snapshot) => {
+      if (!snapshot.empty) {
+        const docs = snapshot.docs.map(d => d.data() as Student);
+        setStudents(docs);
+      }
+    }, (err) => console.warn('Firestore students listener:', err));
+
+    const unsubTeachers = onSnapshot(collection(db, 'teachers'), (snapshot) => {
+      if (!snapshot.empty) {
+        const docs = snapshot.docs.map(d => d.data() as Teacher);
+        setTeachers(docs);
+      }
+    }, (err) => console.warn('Firestore teachers listener:', err));
+
+    const unsubAttendance = onSnapshot(collection(db, 'attendance'), (snapshot) => {
+      if (!snapshot.empty) {
+        const docs = snapshot.docs.map(d => d.data() as AttendanceRecord);
+        setAttendance(docs);
+      }
+    }, (err) => console.warn('Firestore attendance listener:', err));
+
+    const unsubProgress = onSnapshot(collection(db, 'progress'), (snapshot) => {
+      if (!snapshot.empty) {
+        const docs = snapshot.docs.map(d => d.data() as ProgressItem);
+        setProgress(docs);
+      }
+    }, (err) => console.warn('Firestore progress listener:', err));
+
+    const unsubHomework = onSnapshot(collection(db, 'homework'), (snapshot) => {
+      if (!snapshot.empty) {
+        const docs = snapshot.docs.map(d => d.data() as Homework);
+        setHomework(docs);
+      }
+    }, (err) => console.warn('Firestore homework listener:', err));
+
+    const unsubTimetable = onSnapshot(collection(db, 'timetable'), (snapshot) => {
+      if (!snapshot.empty) {
+        const docs = snapshot.docs.map(d => d.data() as TimetableSlot);
+        setTimetable(docs);
+      }
+    }, (err) => console.warn('Firestore timetable listener:', err));
+
+    const unsubAnnouncements = onSnapshot(collection(db, 'announcements'), (snapshot) => {
+      if (!snapshot.empty) {
+        const docs = snapshot.docs.map(d => d.data() as Announcement);
+        setAnnouncements(docs);
+      }
+    }, (err) => console.warn('Firestore announcements listener:', err));
+
+    const unsubTeacherChat = onSnapshot(collection(db, 'teacherChat'), (snapshot) => {
+      if (!snapshot.empty) {
+        const docs = snapshot.docs.map(d => d.data() as TeacherChatMessage);
+        setTeacherChat(docs);
+      }
+    }, (err) => console.warn('Firestore teacherChat listener:', err));
+
+    const unsubQuestions = onSnapshot(collection(db, 'questions'), (snapshot) => {
+      if (!snapshot.empty) {
+        const docs = snapshot.docs.map(d => d.data() as Question);
+        setQuestions(docs);
+      }
+    }, (err) => console.warn('Firestore questions listener:', err));
+
+    const unsubCalendarEvents = onSnapshot(collection(db, 'calendarEvents'), (snapshot) => {
+      if (!snapshot.empty) {
+        const docs = snapshot.docs.map(d => d.data() as CalendarEvent);
+        setCalendarEvents(docs);
+      }
+    }, (err) => console.warn('Firestore calendarEvents listener:', err));
+
+    const unsubActivityLogs = onSnapshot(collection(db, 'activityLogs'), (snapshot) => {
+      if (!snapshot.empty) {
+        const docs = snapshot.docs.map(d => d.data() as ActivityLog);
+        setActivityLogs(docs);
+      }
+    }, (err) => console.warn('Firestore activityLogs listener:', err));
+
+    const unsubSettings = onSnapshot(doc(db, 'settings', 'academy'), (docSnap) => {
+      if (docSnap.exists()) {
+        const data = docSnap.data() as AcademySettings;
+        if (!data.name || data.name.includes('에듀플로우')) {
+          data.name = 'RalRalRal Class';
+          setDoc(doc(db, 'settings', 'academy'), data).catch(console.error);
+        }
+        setAcademySettings(data);
+      } else {
+        setDoc(doc(db, 'settings', 'academy'), INITIAL_ACADEMY_SETTINGS).catch(console.error);
+      }
+    }, (err) => console.warn('Firestore settings listener:', err));
+
+    return () => {
+      unsubStudents();
+      unsubTeachers();
+      unsubAttendance();
+      unsubProgress();
+      unsubHomework();
+      unsubTimetable();
+      unsubAnnouncements();
+      unsubTeacherChat();
+      unsubQuestions();
+      unsubCalendarEvents();
+      unsubActivityLogs();
+      unsubSettings();
+    };
+  }, []);
 
   const toggleDarkMode = () => setIsDarkMode(prev => !prev);
 
@@ -255,6 +331,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       timestamp: new Date().toISOString()
     };
     setActivityLogs(prev => [newLog, ...prev]);
+    setDoc(doc(db, 'activityLogs', newLog.id), newLog).catch(err => console.error('Firestore log err:', err));
   };
 
   const login = (loginId: string, pass: string, autoLogin = false): boolean => {
@@ -369,6 +446,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     };
 
     setStudents(prev => [...prev, newStudent]);
+    setDoc(doc(db, 'students', id), newStudent).catch(err => console.error('Firestore err:', err));
     logActivity('학생 추가', `신규 학생 '${newStudent.name}' 등록 완료 (ID: ${loginId})`);
 
     if (createAccount) {
@@ -383,12 +461,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const updateStudent = (studentId: string, updates: Partial<Student>) => {
     setStudents(prev => prev.map(s => s.id === studentId ? { ...s, ...updates } : s));
+    updateDoc(doc(db, 'students', studentId), updates).catch(err => console.error('Firestore err:', err));
     logActivity('학생 정보 수정', `학생 ID(${studentId}) 정보가 업데이트되었습니다.`);
   };
 
   const deleteStudent = (studentId: string) => {
     const target = students.find(s => s.id === studentId);
     setStudents(prev => prev.filter(s => s.id !== studentId));
+    deleteDoc(doc(db, 'students', studentId)).catch(err => console.error('Firestore err:', err));
     logActivity('학생 삭제', `학생 '${target?.name || studentId}' 삭제 완료`);
   };
 
@@ -406,6 +486,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
       return s;
     }));
+    updateDoc(doc(db, 'students', studentId), { loginId, initialPassword: randPass }).catch(err => console.error('Firestore err:', err));
 
     logActivity('학생 계정 생성', `학생 ID(${studentId}) 계정이 생성되었습니다 (${loginId})`);
     return { loginId, initialPassword: randPass };
@@ -414,12 +495,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const resetStudentPassword = (studentId: string, customPass?: string) => {
     const newPass = customPass || Math.floor(100000 + Math.random() * 900000).toString();
     setStudents(prev => prev.map(s => s.id === studentId ? { ...s, initialPassword: newPass } : s));
+    updateDoc(doc(db, 'students', studentId), { initialPassword: newPass }).catch(err => console.error('Firestore err:', err));
     logActivity('비밀번호 변경', `학생 ID(${studentId}) 비밀번호가 변경되었습니다.`);
     return newPass;
   };
 
   const toggleStudentActive = (studentId: string) => {
-    setStudents(prev => prev.map(s => s.id === studentId ? { ...s, isActive: !s.isActive } : s));
+    const target = students.find(s => s.id === studentId);
+    if (target) {
+      const nextActive = !target.isActive;
+      setStudents(prev => prev.map(s => s.id === studentId ? { ...s, isActive: nextActive } : s));
+      updateDoc(doc(db, 'students', studentId), { isActive: nextActive }).catch(err => console.error('Firestore err:', err));
+    }
     logActivity('계정 상태 변경', `학생 ID(${studentId}) 계정 활성/비활성 전환`);
   };
 
@@ -436,6 +523,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       createdAt: new Date().toISOString().split('T')[0]
     };
     setTeachers(prev => [...prev, newTeacher]);
+    setDoc(doc(db, 'teachers', id), newTeacher).catch(err => console.error('Firestore err:', err));
     logActivity('선생님 등록', `'${newTeacher.name}' 선생님 계정 생성 완료 (ID: ${loginId})`);
     return newTeacher;
   };
@@ -443,12 +531,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const resetTeacherPassword = (teacherId: string, customPass?: string) => {
     const newPass = customPass || Math.floor(100000 + Math.random() * 900000).toString();
     setTeachers(prev => prev.map(t => t.id === teacherId ? { ...t, initialPassword: newPass } : t));
+    updateDoc(doc(db, 'teachers', teacherId), { initialPassword: newPass }).catch(err => console.error('Firestore err:', err));
     logActivity('선생님 비밀번호 변경', `선생님 ID(${teacherId}) 비밀번호가 변경되었습니다.`);
     return newPass;
   };
 
   const deleteTeacher = (teacherId: string) => {
     setTeachers(prev => prev.filter(t => t.id !== teacherId));
+    deleteDoc(doc(db, 'teachers', teacherId)).catch(err => console.error('Firestore err:', err));
     logActivity('선생님 삭제', `선생님 ID(${teacherId}) 삭제 완료`);
   };
 
@@ -463,11 +553,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const today = new Date().toISOString().split('T')[0];
     const targetStudent = students.find(s => s.id === studentId);
 
+    let targetRecord: AttendanceRecord;
     setAttendance(prev => {
       const existingIdx = prev.findIndex(a => a.studentId === studentId && a.date === today);
       if (existingIdx >= 0) {
         const updated = [...prev];
-        updated[existingIdx] = {
+        targetRecord = {
           ...updated[existingIdx],
           status,
           checkInTime: checkInTime || updated[existingIdx].checkInTime || new Date().toTimeString().slice(0,5),
@@ -476,9 +567,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           updatedBy: currentUser?.name || '선생님',
           updatedAt: new Date().toISOString()
         };
+        updated[existingIdx] = targetRecord;
         return updated;
       } else {
-        const newRecord: AttendanceRecord = {
+        targetRecord = {
           id: `att_${Date.now()}`,
           studentId,
           studentName: targetStudent?.name || '학생',
@@ -490,9 +582,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           updatedBy: currentUser?.name || '선생님',
           updatedAt: new Date().toISOString()
         };
-        return [newRecord, ...prev];
+        return [targetRecord, ...prev];
       }
     });
+
+    setTimeout(() => {
+      if (targetRecord) {
+        setDoc(doc(db, 'attendance', targetRecord.id), targetRecord).catch(err => console.error('Firestore err:', err));
+      }
+    }, 0);
 
     logActivity('출결 저장', `'${targetStudent?.name}' 학생 ${status} 출결 저장`);
   };
@@ -508,50 +606,63 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       studentStatus: {}
     };
     setHomework(prev => [newHw, ...prev]);
+    setDoc(doc(db, 'homework', newHw.id), newHw).catch(err => console.error('Firestore err:', err));
     logActivity('숙제 등록', `'${newHw.title}' 숙제 등록 완료`);
   };
 
   const updateHomework = (hwId: string, updates: Partial<Homework>) => {
     setHomework(prev => prev.map(h => h.id === hwId ? { ...h, ...updates } : h));
+    updateDoc(doc(db, 'homework', hwId), updates).catch(err => console.error('Firestore err:', err));
     logActivity('숙제 수정', `숙제(ID: ${hwId}) 내용 수정 완료`);
   };
 
   const deleteHomework = (hwId: string) => {
     const target = homework.find(h => h.id === hwId);
     setHomework(prev => prev.filter(h => h.id !== hwId));
+    deleteDoc(doc(db, 'homework', hwId)).catch(err => console.error('Firestore err:', err));
     logActivity('숙제 삭제', `'${target?.title || hwId}' 숙제 삭제 완료`);
   };
 
   const toggleHomeworkChecklist = (hwId: string, itemIndex: number) => {
+    let updatedChecklists: any = null;
     setHomework(prev => prev.map(h => {
       if (h.id === hwId) {
         const newChecklists = [...h.checklists];
         newChecklists[itemIndex].completed = !newChecklists[itemIndex].completed;
+        updatedChecklists = newChecklists;
         return { ...h, checklists: newChecklists };
       }
       return h;
     }));
+    if (updatedChecklists) {
+      updateDoc(doc(db, 'homework', hwId), { checklists: updatedChecklists }).catch(err => console.error('Firestore err:', err));
+    }
   };
 
   const toggleStudentHomeworkComplete = (hwId: string, studentId: string, note?: string) => {
+    let updatedStatus: any = null;
     setHomework(prev => prev.map(h => {
       if (h.id === hwId) {
         const current = h.studentStatus[studentId] || { completed: false };
         const nextCompleted = !current.completed;
+        updatedStatus = {
+          ...h.studentStatus,
+          [studentId]: {
+            completed: nextCompleted,
+            completedAt: nextCompleted ? new Date().toISOString() : undefined,
+            studentNote: note || current.studentNote
+          }
+        };
         return {
           ...h,
-          studentStatus: {
-            ...h.studentStatus,
-            [studentId]: {
-              completed: nextCompleted,
-              completedAt: nextCompleted ? new Date().toISOString() : undefined,
-              studentNote: note || current.studentNote
-            }
-          }
+          studentStatus: updatedStatus
         };
       }
       return h;
     }));
+    if (updatedStatus) {
+      updateDoc(doc(db, 'homework', hwId), { studentStatus: updatedStatus }).catch(err => console.error('Firestore err:', err));
+    }
     logActivity('숙제 완료 상태 변경', `학생(${studentId}) 숙제 완료 상태 업데이트`);
   };
 
@@ -564,6 +675,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       updatedBy: currentUser?.name || '선생님'
     };
     setProgress(prev => [newProgress, ...prev]);
+    setDoc(doc(db, 'progress', newProgress.id), newProgress).catch(err => console.error('Firestore err:', err));
     logActivity('진도 입력', `'${item.studentName}' 학생 ${item.subject} 진도(${item.unit}) 기록`);
   };
 
@@ -578,17 +690,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       viewCount: 1
     };
     setAnnouncements(prev => [newAnn, ...prev]);
+    setDoc(doc(db, 'announcements', newAnn.id), newAnn).catch(err => console.error('Firestore err:', err));
     logActivity('공지사항 작성', `'${newAnn.title}' 공지 등록`);
   };
 
   const updateAnnouncement = (annId: string, updates: Partial<Omit<Announcement, 'id' | 'createdAt' | 'authorName' | 'authorRole'>>) => {
     setAnnouncements(prev => prev.map(a => a.id === annId ? { ...a, ...updates } : a));
+    updateDoc(doc(db, 'announcements', annId), updates).catch(err => console.error('Firestore err:', err));
     logActivity('공지사항 수정', `공지사항(ID: ${annId}) 수정 완료`);
   };
 
   const deleteAnnouncement = (annId: string) => {
     const target = announcements.find(a => a.id === annId);
     setAnnouncements(prev => prev.filter(a => a.id !== annId));
+    deleteDoc(doc(db, 'announcements', annId)).catch(err => console.error('Firestore err:', err));
     logActivity('공지사항 삭제', `'${target?.title || annId}' 공지 삭제 완료`);
   };
 
@@ -606,6 +721,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       isNotice
     };
     setTeacherChat(prev => [...prev, msg]);
+    setDoc(doc(db, 'teacherChat', msg.id), msg).catch(err => console.error('Firestore err:', err));
   };
 
   // Q&A Question Actions
@@ -623,6 +739,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       comments: []
     };
     setQuestions(prev => [newQ, ...prev]);
+    setDoc(doc(db, 'questions', newQ.id), newQ).catch(err => console.error('Firestore err:', err));
     logActivity('질문 등록', `'${title}' 학생 질문 업로드`);
   };
 
@@ -636,16 +753,21 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       createdAt: new Date().toISOString()
     };
 
+    let updatedComments: any = null;
     setQuestions(prev => prev.map(q => {
       if (q.id === questionId) {
+        updatedComments = [...q.comments, newComment];
         return {
           ...q,
           status: 'answered' as const,
-          comments: [...q.comments, newComment]
+          comments: updatedComments
         };
       }
       return q;
     }));
+    if (updatedComments) {
+      updateDoc(doc(db, 'questions', questionId), { status: 'answered', comments: updatedComments }).catch(err => console.error('Firestore err:', err));
+    }
     logActivity('질문 답변 작성', `질문 ID(${questionId})에 답변이 등록되었습니다.`);
   };
 
@@ -656,11 +778,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       id: `ev_${Date.now()}`
     };
     setCalendarEvents(prev => [...prev, newEv]);
+    setDoc(doc(db, 'calendarEvents', newEv.id), newEv).catch(err => console.error('Firestore err:', err));
     logActivity('일정 추가', `'${ev.title}' 일정 등록`);
   };
 
   const deleteCalendarEvent = (eventId: string) => {
     setCalendarEvents(prev => prev.filter(e => e.id !== eventId));
+    deleteDoc(doc(db, 'calendarEvents', eventId)).catch(err => console.error('Firestore err:', err));
   };
 
   // Timetable Actions (Only Admin / Director authorized)
@@ -670,22 +794,27 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       id: `tt_${Date.now()}`
     };
     setTimetable(prev => [...prev, newSlot]);
+    setDoc(doc(db, 'timetable', newSlot.id), newSlot).catch(err => console.error('Firestore err:', err));
     logActivity('시간표 추가', `'${slot.day}요일 ${slot.subject}(${slot.className})' 수업 시간표 추가`);
   };
 
   const updateTimetableSlot = (slotId: string, updates: Partial<TimetableSlot>) => {
     setTimetable(prev => prev.map(s => s.id === slotId ? { ...s, ...updates } : s));
+    updateDoc(doc(db, 'timetable', slotId), updates).catch(err => console.error('Firestore err:', err));
     logActivity('시간표 수정', `시간표(ID: ${slotId}) 변경 완료`);
   };
 
   const deleteTimetableSlot = (slotId: string) => {
     const target = timetable.find(s => s.id === slotId);
     setTimetable(prev => prev.filter(s => s.id !== slotId));
+    deleteDoc(doc(db, 'timetable', slotId)).catch(err => console.error('Firestore err:', err));
     logActivity('시간표 삭제', `'${target?.day || ''}요일 ${target?.subject || ''}' 시간표 삭제 완료`);
   };
 
   const updateAcademySettings = (settings: Partial<AcademySettings>) => {
-    setAcademySettings(prev => ({ ...prev, ...settings }));
+    const newSettings = { ...academySettings, ...settings };
+    setAcademySettings(newSettings);
+    setDoc(doc(db, 'settings', 'academy'), newSettings).catch(err => console.error('Firestore err:', err));
     logActivity('학원 설정 변경', '학원 기본 정보 및 설정 수정');
   };
 

@@ -1,8 +1,26 @@
 {
   "entities": {
-    "students": {
-      "title": "Students",
-      "description": "Academy Student records",
+    "UserProfile": {
+      "title": "UserProfile",
+      "description": "User profile document",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "loginId": { "type": "string" },
+        "name": { "type": "string" },
+        "role": { "type": "string" },
+        "phone": { "type": "string" },
+        "email": { "type": "string" },
+        "createdAt": { "type": "string" },
+        "isActive": { "type": "boolean" },
+        "teacherId": { "type": "string" },
+        "studentId": { "type": "string" }
+      },
+      "required": ["uid", "loginId", "name", "role", "createdAt"]
+    },
+    "Student": {
+      "title": "Student",
+      "description": "Student document",
       "type": "object",
       "properties": {
         "id": { "type": "string" },
@@ -20,51 +38,273 @@
         "isActive": { "type": "boolean" },
         "createdAt": { "type": "string" }
       },
-      "required": ["id", "loginId", "name", "phone"]
+      "required": ["id", "loginId", "name", "grade", "className"]
     },
-    "teachers": {
-      "title": "Teachers",
-      "description": "Teacher records",
+    "Teacher": {
+      "title": "Teacher",
+      "description": "Teacher document",
       "type": "object",
       "properties": {
         "id": { "type": "string" },
         "loginId": { "type": "string" },
         "name": { "type": "string" },
-        "phone": { "type": "string" }
+        "phone": { "type": "string" },
+        "subjects": { "type": "array", "items": { "type": "string" } },
+        "assignedClasses": { "type": "array", "items": { "type": "string" } },
+        "createdAt": { "type": "string" }
       },
       "required": ["id", "loginId", "name"]
     },
-    "attendance": {
-      "title": "Attendance",
-      "description": "Student attendance logs",
+    "AttendanceRecord": {
+      "title": "AttendanceRecord",
+      "description": "Attendance record document",
       "type": "object",
       "properties": {
+        "id": { "type": "string" },
         "studentId": { "type": "string" },
+        "studentName": { "type": "string" },
         "date": { "type": "string" },
-        "status": { "type": "string" }
+        "status": { "type": "string" },
+        "checkInTime": { "type": "string" },
+        "checkOutTime": { "type": "string" },
+        "note": { "type": "string" },
+        "updatedBy": { "type": "string" },
+        "updatedAt": { "type": "string" }
       },
-      "required": ["studentId", "date", "status"]
+      "required": ["id", "studentId", "date", "status"]
     },
-    "homework": {
-      "title": "Homework",
-      "description": "Homework assignments",
+    "ProgressItem": {
+      "title": "ProgressItem",
+      "description": "Progress tracking item",
       "type": "object",
       "properties": {
+        "id": { "type": "string" },
+        "studentId": { "type": "string" },
+        "studentName": { "type": "string" },
+        "subject": { "type": "string" },
+        "textbook": { "type": "string" },
+        "unit": { "type": "string" },
+        "page": { "type": "string" },
+        "status": { "type": "string" },
+        "date": { "type": "string" },
+        "updatedBy": { "type": "string" }
+      },
+      "required": ["id", "studentId", "subject", "status"]
+    },
+    "Homework": {
+      "title": "Homework",
+      "description": "Homework item",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
         "title": { "type": "string" },
         "subject": { "type": "string" },
-        "dueDate": { "type": "string" }
+        "targetType": { "type": "string" },
+        "targetValue": { "type": "string" },
+        "description": { "type": "string" },
+        "dueDate": { "type": "string" },
+        "createdBy": { "type": "string" },
+        "createdByName": { "type": "string" },
+        "createdAt": { "type": "string" }
       },
-      "required": ["title", "subject", "dueDate"]
+      "required": ["id", "title", "subject", "dueDate"]
     },
-    "announcements": {
-      "title": "Announcements",
-      "description": "Academy announcements",
+    "TimetableSlot": {
+      "title": "TimetableSlot",
+      "description": "Timetable slot",
       "type": "object",
       "properties": {
-        "title": { "type": "string" },
-        "content": { "type": "string" }
+        "id": { "type": "string" },
+        "day": { "type": "string" },
+        "startTime": { "type": "string" },
+        "endTime": { "type": "string" },
+        "subject": { "type": "string" },
+        "className": { "type": "string" },
+        "teacherName": { "type": "string" }
       },
-      "required": ["title", "content"]
+      "required": ["id", "day", "startTime", "endTime", "subject", "className"]
+    },
+    "Announcement": {
+      "title": "Announcement",
+      "description": "Announcement item",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "title": { "type": "string" },
+        "content": { "type": "string" },
+        "priority": { "type": "string" },
+        "isPinned": { "type": "boolean" },
+        "authorName": { "type": "string" },
+        "authorRole": { "type": "string" },
+        "createdAt": { "type": "string" },
+        "viewCount": { "type": "number" }
+      },
+      "required": ["id", "title", "content", "createdAt"]
+    },
+    "TeacherChatMessage": {
+      "title": "TeacherChatMessage",
+      "description": "Teacher chat message",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "senderId": { "type": "string" },
+        "senderName": { "type": "string" },
+        "senderRole": { "type": "string" },
+        "content": { "type": "string" },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["id", "senderId", "senderName", "content", "createdAt"]
+    },
+    "Question": {
+      "title": "Question",
+      "description": "Q&A Question",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "studentId": { "type": "string" },
+        "studentName": { "type": "string" },
+        "subject": { "type": "string" },
+        "title": { "type": "string" },
+        "content": { "type": "string" },
+        "status": { "type": "string" },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["id", "studentId", "title", "content", "createdAt"]
+    },
+    "CalendarEvent": {
+      "title": "CalendarEvent",
+      "description": "Calendar event",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "title": { "type": "string" },
+        "date": { "type": "string" },
+        "type": { "type": "string" }
+      },
+      "required": ["id", "title", "date", "type"]
+    },
+    "ActivityLog": {
+      "title": "ActivityLog",
+      "description": "Activity log",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "userName": { "type": "string" },
+        "userRole": { "type": "string" },
+        "action": { "type": "string" },
+        "details": { "type": "string" },
+        "timestamp": { "type": "string" }
+      },
+      "required": ["id", "userName", "action", "timestamp"]
+    },
+    "AcademySettings": {
+      "title": "AcademySettings",
+      "description": "Academy settings document",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "address": { "type": "string" },
+        "phone": { "type": "string" },
+        "directorName": { "type": "string" },
+        "theme": { "type": "string" }
+      },
+      "required": ["name", "address", "phone", "directorName"]
+    }
+  },
+  "firestore": {
+    "collections": {
+      "users": {
+        "entity": "UserProfile",
+        "access": {
+          "read": "authenticated",
+          "write": "authenticated"
+        }
+      },
+      "students": {
+        "entity": "Student",
+        "access": {
+          "read": "authenticated",
+          "write": "authenticated"
+        }
+      },
+      "teachers": {
+        "entity": "Teacher",
+        "access": {
+          "read": "authenticated",
+          "write": "authenticated"
+        }
+      },
+      "attendance": {
+        "entity": "AttendanceRecord",
+        "access": {
+          "read": "authenticated",
+          "write": "authenticated"
+        }
+      },
+      "progress": {
+        "entity": "ProgressItem",
+        "access": {
+          "read": "authenticated",
+          "write": "authenticated"
+        }
+      },
+      "homework": {
+        "entity": "Homework",
+        "access": {
+          "read": "authenticated",
+          "write": "authenticated"
+        }
+      },
+      "timetable": {
+        "entity": "TimetableSlot",
+        "access": {
+          "read": "authenticated",
+          "write": "authenticated"
+        }
+      },
+      "announcements": {
+        "entity": "Announcement",
+        "access": {
+          "read": "authenticated",
+          "write": "authenticated"
+        }
+      },
+      "teacherChat": {
+        "entity": "TeacherChatMessage",
+        "access": {
+          "read": "authenticated",
+          "write": "authenticated"
+        }
+      },
+      "questions": {
+        "entity": "Question",
+        "access": {
+          "read": "authenticated",
+          "write": "authenticated"
+        }
+      },
+      "calendarEvents": {
+        "entity": "CalendarEvent",
+        "access": {
+          "read": "authenticated",
+          "write": "authenticated"
+        }
+      },
+      "activityLogs": {
+        "entity": "ActivityLog",
+        "access": {
+          "read": "authenticated",
+          "write": "authenticated"
+        }
+      },
+      "settings": {
+        "entity": "AcademySettings",
+        "access": {
+          "read": "authenticated",
+          "write": "authenticated"
+        }
+      }
     }
   }
 }

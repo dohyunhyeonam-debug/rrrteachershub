@@ -1,7 +1,7 @@
 import { Student, Teacher, AttendanceRecord, Homework, ProgressItem, TimetableSlot, Announcement, TeacherChatMessage, Question, CalendarEvent, ActivityLog, AcademySettings, UserProfile } from '../types';
 
 export const INITIAL_ACADEMY_SETTINGS: AcademySettings = {
-  name: '에듀플로우 수리영어학원',
+  name: 'RalRalRal Class',
   logoUrl: '',
   address: '서울특별시 강남구 대치동 123 에듀타운 4층',
   phone: '02-555-8209',
@@ -40,7 +40,7 @@ export const INITIAL_ANNOUNCEMENTS: Announcement[] = [
   {
     id: 'ann-1',
     title: '📌 2026년 2학기 중간고사 대비 특강 및 클리닉 시간표 안내',
-    content: `안녕하세요, 에듀플로우 학원입니다.
+    content: `안녕하세요, RalRalRal Class입니다.
 9월 예정된 학교별 2학기 중간고사 대비를 위해 주말 1:1 약점 보완 클리닉이 열립니다.
 
 - 대상: 중 / 고등 전 수강생

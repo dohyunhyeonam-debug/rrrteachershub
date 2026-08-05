@@ -50,11 +50,16 @@ export const Login: React.FC = () => {
           <div className="inline-flex items-center justify-center w-16 h-16 rounded-3xl bg-indigo-600 text-white shadow-xl shadow-indigo-500/25 mb-4">
             <GraduationCap className="w-9 h-9" />
           </div>
-          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-slate-900 dark:text-white">
-            {academySettings.name || '에듀플로우 학원'}
+          <div className="mb-2">
+            <span className="inline-block px-3 py-1 rounded-full bg-indigo-100 dark:bg-indigo-950/80 border border-indigo-200 dark:border-indigo-800 text-indigo-700 dark:text-indigo-300 text-xs font-bold tracking-wide">
+              Eduflow System
+            </span>
+          </div>
+          <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-slate-900 dark:text-white">
+            {(!academySettings.name || academySettings.name.includes('에듀플로우')) ? 'RalRalRal Class' : academySettings.name}
           </h1>
-          <p className="text-sm text-slate-500 dark:text-slate-400 mt-2 font-medium">
-            통합학원 관리 시스템 로그인
+          <p className="text-sm text-slate-500 dark:text-slate-400 mt-1.5 font-medium">
+            학원 통합 관리 포털 로그인
           </p>
         </div>
 

@@ -81,7 +81,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
             </div>
             <div>
               <h2 className="font-bold text-base text-slate-900 dark:text-white leading-tight">
-                {academySettings.name || '에듀플로우'}
+                {academySettings.name || 'RalRalRal Class'}
               </h2>
               <span className="text-[11px] font-semibold text-indigo-600 dark:text-indigo-400 flex items-center gap-1 mt-0.5">
                 <Sparkles className="w-3 h-3" /> EduFlow v2.5
