@@ -1,0 +1,70 @@
+{
+  "entities": {
+    "students": {
+      "title": "Students",
+      "description": "Academy Student records",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "loginId": { "type": "string" },
+        "name": { "type": "string" },
+        "phone": { "type": "string" },
+        "parentPhone": { "type": "string" },
+        "school": { "type": "string" },
+        "grade": { "type": "string" },
+        "className": { "type": "string" },
+        "subjects": { "type": "array", "items": { "type": "string" } },
+        "attendanceDays": { "type": "array", "items": { "type": "string" } },
+        "attendanceTime": { "type": "string" },
+        "notes": { "type": "string" },
+        "isActive": { "type": "boolean" },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["id", "loginId", "name", "phone"]
+    },
+    "teachers": {
+      "title": "Teachers",
+      "description": "Teacher records",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "loginId": { "type": "string" },
+        "name": { "type": "string" },
+        "phone": { "type": "string" }
+      },
+      "required": ["id", "loginId", "name"]
+    },
+    "attendance": {
+      "title": "Attendance",
+      "description": "Student attendance logs",
+      "type": "object",
+      "properties": {
+        "studentId": { "type": "string" },
+        "date": { "type": "string" },
+        "status": { "type": "string" }
+      },
+      "required": ["studentId", "date", "status"]
+    },
+    "homework": {
+      "title": "Homework",
+      "description": "Homework assignments",
+      "type": "object",
+      "properties": {
+        "title": { "type": "string" },
+        "subject": { "type": "string" },
+        "dueDate": { "type": "string" }
+      },
+      "required": ["title", "subject", "dueDate"]
+    },
+    "announcements": {
+      "title": "Announcements",
+      "description": "Academy announcements",
+      "type": "object",
+      "properties": {
+        "title": { "type": "string" },
+        "content": { "type": "string" }
+      },
+      "required": ["title", "content"]
+    }
+  }
+}
